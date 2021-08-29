@@ -1,0 +1,103 @@
+version: '3.8'
+
+services: 
+
+  # API GATEWAY
+  
+  api-gateway:
+    container_name: api-gateway
+    build: ./api-gateway
+    ports:
+      - "7000:7000"
+    restart: on-failure
+    depends_on: 
+      - chat-service
+      - users-service
+    volumes:
+      - ./api-gateway:/api-gateway/
+      - /api-gateway/node_modules
+      
+  # CHAT APP
+  
+  chat-app:
+    container_name: chat-app
+    build: ./chat-app
+    ports: 
+      - "7001:7001"
+    restart: on-failure
+    depends_on:
+      - api-gateway
+    env_file: ./chat-app/.env
+    volumes:
+      - ./chat-app:/chat-app/
+      - /chat-app/node_modules
+    
+  # CHAT SERVICE  
+  
+  chat-service:
+    container_name: chat-service
+    build: ./chat-service
+    ports:
+      - "7100:7100"
+    restart: on-failure
+    depends_on:
+      - chat-service-db
+    volumes:
+      - ./chat-service:/chat-service/
+      - /chat-service/node_modules
+      
+  # USERS SERVICE  
+
+  users-service:
+    container_name: users-service
+    build: ./users-service
+    ports:
+      - "7101:7101"
+    restart: on-failure
+    depends_on:
+      - users-service-db
+    volumes:
+      - ./users-service:/users-service/
+      - /users-service/node_modules
+    command: sh -c "yarn db:migrate && yarn watch"
+      
+  # DATABASE'S
+    
+  users-service-db:
+    image: mysql:5.7.20
+    container_name: users-service-db
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: db
+    ports: 
+      - "7201:3306"
+    volumes:
+      - users_service_data:/var/lib/mysql
+
+  chat-service-db:
+    image: mysql:5.7.20
+    ports: 
+      - "7200:3306"
+    container_name: chat-service-db
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: db
+    volumes:
+      - chat_service_data:/var/lib/mysql
+      
+    # TOOL'S      
+      
+  phpmyadmin:
+    container_name: phpmyadmin
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - "7300:80"
+    depends_on:
+      - chat-service-db
+      - users-service-db
+    volumes: 
+      - ./phpmyadmin/config.user.inc.php:/etc/phpmyadmin/config.user.inc.php
+
+volumes:
+  users_service_data:
+  chat_service_data:
